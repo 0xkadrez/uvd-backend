@@ -437,7 +437,7 @@ exports.handler = async (event, context) => {
 
           if (existingUser) {
             // Si el usuario existe, verificar si la wallet coincide
-            if (existingUser.wallet === body.wallet) {
+            if (existingUser.wallet.toLowerCase() === body.wallet.toLowerCase()) {
               return {
                 statusCode: 200,
                 body: JSON.stringify({ 
