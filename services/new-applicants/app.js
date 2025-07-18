@@ -360,6 +360,163 @@ exports.handler = async (event, context) => {
           };
         }
       }
+
+      /*
+      // PUT /wallets - Actualizar wallet de usuario existente
+      if (method === 'PUT') {
+        try {
+          const db = dbClient.db();
+          const collection = db.collection('wallets');
+          
+          let body = {};
+          if (event.body) {
+            try {
+              body = JSON.parse(event.body);
+              // Sanitizar input
+              body = sanitize(body);
+              console.log(`[BODY_PARSE_SUCCESS] Datos recibidos para actualización: ${JSON.stringify(body)}`);
+            } catch (e) {
+              console.error(`[BODY_PARSE_ERROR] Error al parsear JSON: ${e.message}`);
+              return {
+                statusCode: 400,
+                body: JSON.stringify({ error: 'Error al procesar el JSON del body' }),
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Access-Control-Allow-Origin': '*'
+                }
+              };
+            }
+          }
+
+          // Validar que se proporcionaron los campos requeridos
+          if (!body.username || !body.newWallet) {
+            return {
+              statusCode: 400,
+              body: JSON.stringify({ error: 'Se requieren username y newWallet' }),
+              headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+              }
+            };
+          }
+
+          // Validar formato de wallet (dirección de Avalanche C-Chain)
+          const walletRegex = /^0x[a-fA-F0-9]{40}$/;
+          if (!walletRegex.test(body.newWallet)) {
+            return {
+              statusCode: 400,
+              body: JSON.stringify({ error: 'Formato de wallet inválido' }),
+              headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+              }
+            };
+          }
+
+          // Verificar que el usuario existe (case insensitive)
+          const existingUser = await collection.findOne({ 
+            username: { $regex: new RegExp(`^${body.username}$`, 'i') }
+          });
+          if (!existingUser) {
+            return {
+              statusCode: 404,
+              body: JSON.stringify({ error: 'Usuario no encontrado' }),
+              headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+              }
+            };
+          }
+
+          // Verificar si la nueva wallet ya está registrada para otro usuario (case insensitive)
+          const existingWallet = await collection.findOne({ 
+            wallet: body.newWallet,
+            username: { 
+              $not: { $regex: new RegExp(`^${body.username}$`, 'i') }
+            }
+          });
+
+          if (existingWallet) {
+            return {
+              statusCode: 400,
+              body: JSON.stringify({ 
+                error: 'La nueva wallet ya está registrada para otro usuario',
+                details: 'Abre un ticket en discord para soporte'
+              }),
+              headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+              }
+            };
+          }
+
+          // Si la nueva wallet es la misma que la actual
+          if (existingUser.wallet.toLowerCase() === body.newWallet.toLowerCase()) {
+            return {
+              statusCode: 200,
+              body: JSON.stringify({ 
+                message: 'La wallet ya está configurada con esa dirección',
+                wallet: existingUser.wallet
+              }),
+              headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+              }
+            };
+          }
+
+          // Actualizar la wallet del usuario (usar el username real de la base de datos)
+          const result = await collection.updateOne(
+            { username: existingUser.username },
+            { 
+              $set: { 
+                wallet: body.newWallet,
+                updatedAt: new Date()
+              }
+            }
+          );
+
+          if (result.modifiedCount === 0) {
+            return {
+              statusCode: 500,
+              body: JSON.stringify({ error: 'No se pudo actualizar la wallet' }),
+              headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+              }
+            };
+          }
+
+          console.log(`[DB_OPERATION] Wallet actualizada para usuario ${existingUser.username}: ${existingUser.wallet} -> ${body.newWallet}`);
+
+          return {
+            statusCode: 200,
+            body: JSON.stringify({ 
+              message: 'Wallet actualizada correctamente',
+              username: existingUser.username,
+              oldWallet: existingUser.wallet,
+              newWallet: body.newWallet,
+              updatedAt: new Date().toISOString()
+            }),
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          };
+
+        } catch (error) {
+          console.error(`[DB_ERROR] Error al actualizar wallet: ${error.message}`);
+          return {
+            statusCode: 500,
+            body: JSON.stringify({ error: 'Error al actualizar la wallet' }),
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          };
+        }
+      }
+      */
       
       // POST /wallets - Registrar wallet de usuario
       if (method === 'POST') {
@@ -412,13 +569,17 @@ exports.handler = async (event, context) => {
             };
           }
 
-          // Buscar si el usuario ya existe
-          const existingUser = await collection.findOne({ username: body.username });
+          // Buscar si el usuario ya existe (case insensitive)
+          const existingUser = await collection.findOne({ 
+            username: { $regex: new RegExp(`^${body.username}$`, 'i') }
+          });
           
-          // Buscar si la wallet ya está registrada para otro usuario
+          // Buscar si la wallet ya está registrada para otro usuario (case insensitive)
           const existingWallet = await collection.findOne({ 
             wallet: body.wallet,
-            username: { $ne: body.username }
+            username: { 
+              $not: { $regex: new RegExp(`^${body.username}$`, 'i') }
+            }
           });
 
           if (existingWallet) {
@@ -506,7 +667,7 @@ exports.handler = async (event, context) => {
         error: 'Ruta no encontrada',
         path: path,
         normalizedPath: normalizedPath,
-        availableRoutes: ['/apply', '/test', '/']
+        availableRoutes: ['/apply', '/wallets', '/test', '/']
       }),
       headers: {
         'Content-Type': 'application/json',
